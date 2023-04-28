@@ -1,0 +1,55 @@
+[project]
+name = "CompanyNameMatchMaker"
+version = "0.1.0"
+description = "Add a short description here"
+authors = [{ name = "XingKaiXin", email = "xingkaixin@gmail.com" }]
+dependencies = [
+    "addressparser~=0.2.4",
+    "companynameparser~=0.1.8",
+    "typesense~=0.15.1",
+    "pandas~=2.0.1",
+    "loguru~=0.7.0"
+]
+readme = "README.md"
+requires-python = ">= 3.8"
+license = { text = "MIT" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "isort~=6.0.0b2",
+    "flake8-pyproject~=1.2.3",
+    "pytest~=7.3.1"
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.flake8]
+max-line-length = 120
+exclude = "**/__init__.py"
+
+[tool.pylint.messages_control]
+disable = "invalid-name, redefined-outer-name, missing-module-docstring, missing-function-docstring, missing-class-docstring, W0703"
+logging-format-style = "percent"
+
+[tool.pylint.design]
+min-public-methods = 0
+
+[tool.pylint.format]
+max-line-length = 120
+indent-string = '    '
+single-quotes = true
+
+[tool.pylint.extensions]
+extension-pkg-allow-list = ["pydantic"]
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+line_length = 88
