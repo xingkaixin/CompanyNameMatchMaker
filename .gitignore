@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+typesense-data
 
 # venv
 .venv
