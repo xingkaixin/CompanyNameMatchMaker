@@ -1,3 +1,6 @@
+from decimal import Decimal
+from typing import Any, Dict
+
 
 class ScoreBoard:
     def __init__(self):
@@ -13,7 +16,6 @@ class ScoreBoard:
 
 def rating(src: Dict[str, Any], targ: Dict[str, Any]) -> float:
     sb = ScoreBoard()
-
     # 品牌
     if src["brand"] == targ["brand"]:
         sb(8.0)

@@ -10,7 +10,6 @@ from loguru import logger
 from tqdm import tqdm
 
 from app.client import SearchEngine
-from app.schemas.company import CompanyDocument
 from app.utils import load_data, rating
 
 collection_name = "corp"
@@ -20,9 +19,16 @@ engine = SearchEngine()
 
 def trans_address(input_address: str) -> str:
     if input_address == "":
-        return input_address
-    df = addressparser.transform([input_address])
-    return f'{df.to_dict("records")[0]["省"]}-{df.to_dict("records")[0]["市"]}-{df.to_dict("records")[0]["区"]}'
+        return ("", "", "")
+    try:
+        df = addressparser.transform([input_address.encode("utf-8")])
+    except:
+        return ("", "", "")
+    return (
+        {df.to_dict("records")[0]["省"]},
+        {df.to_dict("records")[0]["市"]},
+        {df.to_dict("records")[0]["区"]},
+    )
 
 
 def search_engine_data_init():
