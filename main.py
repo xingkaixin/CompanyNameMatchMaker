@@ -115,7 +115,7 @@ def load_file_match(src_files: List[str]):
                     )
                     src_parse["place"] = trans_address(src_parse["place"])
                     targ_parse["place"] = trans_address(targ_parse["place"])
-                    if rating(src_parse, targ_parse) >= 0.92:
+                    if rating(src_parse, targ_parse) >= 9.2:
                         corp_match = {
                             "src_corp_id": src_corp["corp_id"],
                             "src_corp_name": src_corp["corp_cn_name"],
