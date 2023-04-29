@@ -1,7 +1,9 @@
 import math
 import re
+from pathlib import Path
 from typing import List
 
+import addressparser
 import companynameparser
 import pandas as pd
 from loguru import logger
@@ -9,17 +11,21 @@ from tqdm import tqdm
 
 from app.client import SearchEngine
 from app.schemas.company import CompanyDocument
-from app.utils import load_data
-
-c = CompanyDocument(corp_id="11", corp_cn_name="123")
-
+from app.utils import load_data, rating
 
 collection_name = "corp"
 
 engine = SearchEngine()
 
 
-def engine_data_init():
+def trans_address(input_address: str) -> str:
+    if input_address == "":
+        return input_address
+    df = addressparser.transform([input_address])
+    return f'{df.to_dict("records")[0]["省"]}-{df.to_dict("records")[0]["市"]}-{df.to_dict("records")[0]["区"]}'
+
+
+def search_engine_data_init():
     fields = [
         {"name": "corp_id", "type": "string"},
         {
@@ -57,7 +63,15 @@ def load_file_match(src_files: List[str]):
                 src_corp_cn_name, pos_sensitive=False, enable_word_segment=True
             )
             src_brand = re.sub("[,-]", "", src_parse["brand"])
+            # 非正常数据
             if src_brand == "":
+                continue
+            # 自然人
+            if (
+                src_brand not in ["人民政府"]
+                and src_parse["trade"] == ""
+                and src_parse["suffix"] == ""
+            ):
                 continue
             page = 1
             total_page = 1
@@ -93,9 +107,9 @@ def load_file_match(src_files: List[str]):
                     targ_parse = companynameparser.parse(
                         corp_cn_name, pos_sensitive=False, enable_word_segment=True
                     )
-                    if targ_parse["brand"] == src_parse["brand"] and set(
-                        src_parse["trade"].split(",")
-                    ).intersection(set(targ_parse["trade"].split(","))):
+                    src_parse["place"] = trans_address(src_parse["place"])
+                    targ_parse["place"] = trans_address(targ_parse["place"])
+                    if rating(src_parse, targ_parse) >= 0.92:
                         corp_match = {
                             "src_corp_id": src_corp["corp_id"],
                             "src_corp_name": src_corp["corp_cn_name"],
@@ -106,7 +120,7 @@ def load_file_match(src_files: List[str]):
                         }
                         results.append(corp_match)
         df = pd.DataFrame(results)
-        df.to_csv("./data/output/result_1.csv", index=False, encoding="utf-8")
+        df.to_csv(f"./data/output/{Path(src_file).name}", index=False, encoding="utf-8")
     return results
 
 
