@@ -25,9 +25,9 @@ def trans_address(input_address: str) -> str:
     except:
         return ("", "", "")
     return (
-        {df.to_dict("records")[0]["省"]},
-        {df.to_dict("records")[0]["市"]},
-        {df.to_dict("records")[0]["区"]},
+        df.to_dict("records")[0]["省"],
+        df.to_dict("records")[0]["市"],
+        df.to_dict("records")[0]["区"],
     )
 
 
