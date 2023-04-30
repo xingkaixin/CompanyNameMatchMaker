@@ -115,7 +115,7 @@ def load_file_match(src_files: List[str]):
                     )
                     src_parse["place"] = trans_address(src_parse["place"])
                     targ_parse["place"] = trans_address(targ_parse["place"])
-                    if rating(src_parse, targ_parse) >= 9.2:
+                    if rating(src_parse, targ_parse) >= 9.3:
                         corp_match = {
                             "src_corp_id": src_corp["corp_id"],
                             "src_corp_name": src_corp["corp_cn_name"],
@@ -123,6 +123,7 @@ def load_file_match(src_files: List[str]):
                             "corp_cn_name": corp_info["corp_cn_name"],
                             "src_id": src_corp["src_id"],
                             "src_rec_id": src_corp["src_rec_id"],
+                            "rating": rating(src_parse, targ_parse),
                         }
                         results.append(corp_match)
         df = pd.DataFrame(results)
