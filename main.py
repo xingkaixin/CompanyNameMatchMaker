@@ -83,20 +83,12 @@ def load_file_match(src_files: List[str]):
             total_page = 1
             while page <= total_page:
                 # logger.info(f"{page=} {total_page=} {src_parse=}")
-                try:
-                    query_result = engine.query(
-                        collection_name=collection_name,
-                        query_by="corp_cn_name",
-                        q=src_brand,
-                        page=page,
-                    )
-                except:
-                    query_result = engine.query(
-                        collection_name=collection_name,
-                        query_by="corp_cn_name",
-                        q=src_brand,
-                        page=page,
-                    )
+                query_result = engine.query(
+                    collection_name=collection_name,
+                    query_by="corp_cn_name",
+                    q=f"{src_brand}",
+                    page=page,
+                )
                 documents = query_result["hits"]
                 total_page = math.ceil(query_result["found"] / 100)
                 if total_page >= 1000:
@@ -136,8 +128,6 @@ def main():
         ["./data/sample/src_data1.csv", "./data/sample/src_data2.csv"]
     )
     df = pd.DataFrame(results)
-    print(df.info())
-    print(df.head())
     df.to_csv("./data/output/result.csv", index=False, encoding="utf-8")
 
 

@@ -2,6 +2,13 @@ from typing import Any, Dict, List
 
 import typesense
 from loguru import logger
+from tenacity import (
+    RetryError,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_fixed,
+)
 
 
 class SearchEngine:
@@ -31,6 +38,10 @@ class SearchEngine:
     def import_data(self, collection_name: str, data: List[Dict[str, str]]) -> None:
         self.client.collections[COLLECTION_NAME].documents.import_(data)
 
+    @retry(
+        wait=wait_fixed(1),
+        stop=stop_after_attempt(2),
+    )
     def query(
         self,
         collection_name: str,
@@ -38,7 +49,7 @@ class SearchEngine:
         q: str,
         page: int = 1,
         per_page: int = 250,
-    ):  
+    ):
         query_result = self.client.collections[collection_name].documents.search(
             {
                 "pre_segmented_query": True,
