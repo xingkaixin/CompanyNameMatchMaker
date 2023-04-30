@@ -1,7 +1,8 @@
+import concurrent.futures
 import math
 import re
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List
 
 import addressparser
 import companynameparser
@@ -48,6 +49,64 @@ def search_engine_data_init():
     engine.import_data(collection_name, data)
 
 
+def processing_corp(src_corp: Dict[str, Any]):
+    results = []
+    src_corp_cn_name = src_corp["corp_cn_name"]
+    # logger.info(f'match on {src_corp["corp_cn_name"]}')
+    src_parse = companynameparser.parse(
+        src_corp_cn_name, pos_sensitive=False, enable_word_segment=True
+    )
+    src_brand = re.sub("[,-]", "", src_parse["brand"])
+    # 非正常数据
+    if src_brand == "":
+        return results
+    # 自然人
+    if (
+        src_brand not in ["人民政府"]
+        and src_parse["trade"] == ""
+        and src_parse["suffix"] == ""
+    ):
+        return results
+    page = 1
+    total_page = 1
+    while page <= total_page:
+        # logger.info(f"{page=} {total_page=} {src_parse=}")
+        query_result = engine.query(
+            collection_name=collection_name,
+            query_by="corp_cn_name",
+            q=f"{src_brand}",
+            page=page,
+        )
+        documents = query_result["hits"]
+        total_page = math.ceil(query_result["found"] / 100)
+        if total_page >= 1000:
+            logger.warning(f'match on  {src_corp["corp_cn_name"]} need do something')
+            page = total_page + 1
+        else:
+            page += 1
+        for doc in documents:
+            corp_info = doc["document"]
+            corp_id = corp_info["corp_id"]
+            corp_cn_name = corp_info["corp_cn_name"]
+            targ_parse = companynameparser.parse(
+                corp_cn_name, pos_sensitive=False, enable_word_segment=True
+            )
+            src_parse["place"] = trans_address(src_parse["place"])
+            targ_parse["place"] = trans_address(targ_parse["place"])
+            if rating(src_parse, targ_parse) >= 9.3:
+                corp_match = {
+                    "src_corp_id": src_corp["corp_id"],
+                    "src_corp_name": src_corp["corp_cn_name"],
+                    "corp_id": corp_info["corp_id"],
+                    "corp_cn_name": corp_info["corp_cn_name"],
+                    "src_id": src_corp["src_id"],
+                    "src_rec_id": src_corp["src_rec_id"],
+                    "rating": rating(src_parse, targ_parse),
+                }
+                results.append(corp_match)
+    return results
+
+
 def load_file_match(src_files: List[str]):
     results = []
     src_files = src_files
@@ -62,62 +121,18 @@ def load_file_match(src_files: List[str]):
             }
         )
         src_corps = df.to_dict("records")
-        for src_corp in tqdm(src_corps, desc="Processing source corp"):
-            src_corp_cn_name = src_corp["corp_cn_name"]
-            # logger.info(f'match on {src_corp["corp_cn_name"]}')
-            src_parse = companynameparser.parse(
-                src_corp_cn_name, pos_sensitive=False, enable_word_segment=True
+        # for src_corp in tqdm(src_corps, desc="Processing source corp"):
+        with concurrent.futures.ProcessPoolExecutor(max_workers=5) as executor:
+            _results = list(
+                tqdm(executor.map(processing_corp, src_corps), total=len(src_corps))
             )
-            src_brand = re.sub("[,-]", "", src_parse["brand"])
-            # 非正常数据
-            if src_brand == "":
-                continue
-            # 自然人
-            if (
-                src_brand not in ["人民政府"]
-                and src_parse["trade"] == ""
-                and src_parse["suffix"] == ""
-            ):
-                continue
-            page = 1
-            total_page = 1
-            while page <= total_page:
-                # logger.info(f"{page=} {total_page=} {src_parse=}")
-                query_result = engine.query(
-                    collection_name=collection_name,
-                    query_by="corp_cn_name",
-                    q=f"{src_brand}",
-                    page=page,
-                )
-                documents = query_result["hits"]
-                total_page = math.ceil(query_result["found"] / 100)
-                if total_page >= 1000:
-                    logger.warning(
-                        f'match on  {src_corp["corp_cn_name"]} need do something'
-                    )
-                    page = total_page + 1
+            for i in _results:
+                if len(i) == 0:
+                    pass
                 else:
-                    page += 1
-                for doc in documents:
-                    corp_info = doc["document"]
-                    corp_id = corp_info["corp_id"]
-                    corp_cn_name = corp_info["corp_cn_name"]
-                    targ_parse = companynameparser.parse(
-                        corp_cn_name, pos_sensitive=False, enable_word_segment=True
-                    )
-                    src_parse["place"] = trans_address(src_parse["place"])
-                    targ_parse["place"] = trans_address(targ_parse["place"])
-                    if rating(src_parse, targ_parse) >= 9.3:
-                        corp_match = {
-                            "src_corp_id": src_corp["corp_id"],
-                            "src_corp_name": src_corp["corp_cn_name"],
-                            "corp_id": corp_info["corp_id"],
-                            "corp_cn_name": corp_info["corp_cn_name"],
-                            "src_id": src_corp["src_id"],
-                            "src_rec_id": src_corp["src_rec_id"],
-                            "rating": rating(src_parse, targ_parse),
-                        }
-                        results.append(corp_match)
+                    for j in i:
+                        results.append(j)
+
         df = pd.DataFrame(results)
         df.to_csv(f"./data/output/{Path(src_file).name}", index=False, encoding="utf-8")
     return results
