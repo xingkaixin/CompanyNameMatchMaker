@@ -107,6 +107,37 @@ def processing_corp(src_corp: Dict[str, Any]):
     return results
 
 
+def load_file_match_test(src_files: List[str]):
+    results = []
+    src_files = src_files
+    for src_file in tqdm(src_files, desc="Prcessing file"):
+        df = load_data(src_file, sep=";")
+        df = df[["SRC_CORP_ID", "CORP_CN_NAME", "SRC_ID", "SRC_REC_ID"]].rename(
+            columns={
+                "SRC_CORP_ID": "corp_id",
+                "CORP_CN_NAME": "corp_cn_name",
+                "SRC_ID": "src_id",
+                "SRC_REC_ID": "src_rec_id",
+            }
+        )
+
+        executor = concurrent.futures.ProcessPoolExecutor(5)
+        futures = [executor.submit(processing_corp, row) for _, row in df.iterrows()]
+        results = []
+        for future in tqdm(
+            concurrent.futures.as_completed(futures),
+            total=len(futures),
+            desc="Processing",
+        ):
+            results.append(future.result())
+        executor.shutdown()
+        df["search"] = results
+        # tqdm.pandas()
+        # df["search"] = df.progress_apply(lambda row: processing_corp(row), axis=1)
+        df = df[df["search"].str.len() > 0]
+        df.to_pickle(f"./data/output/{Path(src_file).name}.pkl")
+
+
 def load_file_match(src_files: List[str]):
     results = []
     src_files = src_files
